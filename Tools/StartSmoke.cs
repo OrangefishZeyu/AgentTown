@@ -1,0 +1,21 @@
+// Run with Unity Pipeline: unity command script eval --file Tools/StartSmoke.cs
+using System.Reflection;
+AgentTown.Editor.TownProject.OpenScene();
+System.IO.File.WriteAllText("Tools/smoke-active.txt", "smoke");
+var assembly=typeof(EditorWindow).Assembly;
+var viewType=assembly.GetType("UnityEditor.GameView");
+var view=EditorWindow.GetWindow(viewType);
+var sizesType=assembly.GetType("UnityEditor.GameViewSizes");
+var singleton=typeof(ScriptableSingleton<>).MakeGenericType(sizesType);
+var sizes=singleton.GetProperty("instance",BindingFlags.Public|BindingFlags.Static|BindingFlags.FlattenHierarchy).GetValue(null);
+var groupType=assembly.GetType("UnityEditor.GameViewSizeGroupType");
+var group=sizesType.GetMethod("GetGroup").Invoke(sizes,new[]{System.Enum.Parse(groupType,"Standalone")});
+var sizeType=assembly.GetType("UnityEditor.GameViewSize");
+var sizeKind=assembly.GetType("UnityEditor.GameViewSizeType");
+var size=System.Activator.CreateInstance(sizeType,new[]{System.Enum.Parse(sizeKind,"FixedResolution"),(object)1600,(object)1000,"AgentTown QA"});
+group.GetType().GetMethod("AddCustomSize").Invoke(group,new[]{size});
+int count=(int)group.GetType().GetMethod("GetTotalCount").Invoke(group,null);
+viewType.GetProperty("selectedSizeIndex",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance).SetValue(view,count-1);
+view.maximized=true;view.Focus();
+EditorApplication.isPlaying=true;
+return "smoke-started";
